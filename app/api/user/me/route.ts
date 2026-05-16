@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getUserWithAccess } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
-
+export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get('authorization');
