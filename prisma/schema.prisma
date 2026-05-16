@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  STUDIO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  UNPAID
+  INCOMPLETE
+}
+
+enum VoiceCategory {
+  PREMADE
+  CUSTOM
+  COMMUNITY
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  NEUTRAL
+}
+
+enum GenerationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum CreditType {
+  USAGE
+  PURCHASE
+  BONUS
+  REFUND
+  ADMIN_GRANT
+}
+
+model User {
+  id                    String             @id @default(cuid())
+  email                 String             @unique
+  name                  String?
+  password              String?
+  avatarUrl             String?
+  role                  Role               @default(USER)
+  stripeCustomerId      String?            @unique
+  stripeSubscriptionId  String?            @unique
+  subscriptionTier      SubscriptionTier   @default(FREE)
+  subscriptionStatus    SubscriptionStatus?
+  currentPeriodEnd      DateTime?
+  creditsUsed           Int                @default(0)
+  creditsLimit          Int                @default(10000)
+  voices                Voice[]
+  projects              Project[]
+  generations           Generation[]
+  creditTransactions    CreditTransaction[]
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  @@map("users")
+}
+
+model Voice {
+  id              String        @id @default(cuid())
+  name            String
+  description     String?
+  category        VoiceCategory
+  language        String
+  gender          Gender
+  accent          String?
+  ageRange        String?
+  sampleUrl       String?
+  modelId         String?
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isPublic        Boolean       @default(false)
+  isVerified      Boolean       @default(false)
+  cloneCount      Int           @default(0)
+  downloadCount   Int           @default(0)
+  status          String        @default("ready")
+  isDefault       Boolean       @default(false)
+  generations     Generation[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  @@map("voices")
+}
+
+model Project {
+  id              String       @id @default(cuid())
+  name            String
+  description     String?
+  status          String       @default("draft")
+  totalCharacters Int          @default(0)
+  totalDuration   Int?
+  finalAudioUrl   String?
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generations     Generation[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  @@map("projects")
+}
+
+model Generation {
+  id              String            @id @default(cuid())
+  textContent     String            @db.Text
+  characterCount  Int
+  audioUrl        String?
+  format          String            @default("mp3")
+  speed           Float             @default(1.0)
+  pitch           Float             @default(0.0)
+  stability       Float             @default(0.5)
+  status          GenerationStatus  @default(PENDING)
+  errorMessage    String?
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId       String?
+  project         Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  voiceId         String
+  voice           Voice             @relation(fields: [voiceId], references: [id])
+  createdAt       DateTime          @default(now())
+  @@map("generations")
+}
+
+model CreditTransaction {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount        Int
+  type          CreditType
+  description   String?
+  generationId  String?
+  stripeEventId String?
+  createdAt     DateTime   @default(now())
+  @@map("credit_transactions")
+}
