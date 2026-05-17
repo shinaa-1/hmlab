@@ -7,6 +7,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-04-10',
 });
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs'
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get('authorization');

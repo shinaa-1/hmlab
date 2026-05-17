@@ -15,6 +15,7 @@ const TIER_CONFIG = {
   STUDIO: { tier: 'STUDIO', credits: 500000 },
 };
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs'
 export async function POST(req: Request) {
   const payload = await req.text();
   const signature = headers().get('stripe-signature');

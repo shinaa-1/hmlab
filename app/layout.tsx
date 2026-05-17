@@ -3,7 +3,8 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
-
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 export const metadata: Metadata = {
   title: 'H+M Lab - Human Voice, Machine Precision',
   description: 'AI voice generation and cloning platform',
