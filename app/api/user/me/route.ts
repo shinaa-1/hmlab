@@ -1,26 +1,48 @@
-import { NextResponse } from 'next/server';
-import { getUserWithAccess } from '@/lib/auth';
-import jwt from 'jsonwebtoken';
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-export async function GET(req: Request) {
+
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import jwt from 'jsonwebtoken'
+
+export async function GET(request: NextRequest) {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-
-    const userData = await getUserWithAccess(decoded.userId, decoded.email);
-
-    if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as {
+      userId: string
     }
 
-    return NextResponse.json(userData);
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+      },
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({ user })
   } catch (error) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    console.error('Get user error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }

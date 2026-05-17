@@ -1,46 +1,62 @@
-import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
-import { prisma } from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-export async function POST(req: Request) {
+
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
+
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json();
-    const { email, password, name } = body;
+    const { email, password, name } = await request.json()
 
     if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      )
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return NextResponse.json({ error: 'Email already registered' }, { status: 400 });
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    })
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'User already exists' },
+        { status: 409 }
+      )
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10)
 
     const user = await prisma.user.create({
       data: {
         email,
-        name: name || null,
         password: hashedPassword,
-        role: email === process.env.ADMIN_EMAIL ? 'ADMIN' : 'USER',
+        name,
       },
-    });
+    })
 
     const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET!,
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
-    );
+    )
 
-    return NextResponse.json({ 
-      token, 
-      user: { id: user.id, email: user.email, name: user.name, role: user.role } 
-    });
+    return NextResponse.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+    })
   } catch (error) {
-    console.error('Register error:', error);
-    return NextResponse.json({ error: 'Registration failed' }, { status: 500 });
+    console.error('Register error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
